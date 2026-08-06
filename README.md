@@ -2,13 +2,13 @@
 
 ## Đây là gì?
 
-Một server Flask nhỏ, dữ liệu lưu trong RAM, tái hiện lại 5 lỗi phân quyền (F-01 → F-05) trong một ứng dụng SaaS multi-tenant hư cấu tên "Umber Desk 12" — được mô tả trong bài viết ["One Authorization Assessment, Five Failures"](LINK_BÀI_VIẾT_CỦA_BẠN).
+Một server Flask nhỏ, dữ liệu lưu trong RAM, tái hiện lại 5 lỗi vi phạm authorization boundary — và bản đã sửa của chúng — trong một ứng dụng SaaS multi-tenant hư cấu tên "Umber Desk 12". Được mô tả trong bài viết ["Kiểm thử Authorization trong SaaS multi-tenant: Case study 5 lỗ hổng"](LINK_BÀI_VIẾT_CỦA_BẠN).
 
 > Umber Desk 12 là ứng dụng hư cấu. Repo này không phải sản phẩm thật, chỉ tồn tại để phục vụ mục đích minh họa bên dưới.
 
 ## Để làm gì?
 
-Bài viết mô tả các HTTP request/response minh họa cho từng lỗi. Thay vì viết tay các ví dụ đó, repo này là một server thật — chạy lên là có thể tự tay gửi request bằng curl/Burp và nhận về đúng response như trong bài, thay vì phải tin vào ví dụ được viết sẵn.
+Bài viết mô tả các HTTP request/response minh họa cho từng lỗi, cả trước và sau khi sửa. Thay vì viết tay các ví dụ đó, repo này là một server thật — chạy lên là có thể tự tay gửi request bằng curl/Burp và nhận về đúng response như trong bài, thay vì phải tin vào ví dụ được viết sẵn.
 
 ## Công nghệ
 
@@ -23,7 +23,9 @@ pip install flask
 python app.py
 ```
 
-Server chạy ở `http://127.0.0.1:5000`, mặc định ở chế độ **có lỗi** (`VULNERABLE_MODE = True` trong `app.py`).
+Server chạy ở `http://127.0.0.1:5000`. **Mặc định chạy ở chế độ đã sửa** (`VULNERABLE_MODE = False` trong `app.py`).
+
+Muốn xem lại phiên bản có lỗi gốc: mở `app.py`, đổi dòng đầu thành `VULNERABLE_MODE = True`, restart server.
 
 ## Sử dụng
 
@@ -42,19 +44,19 @@ curl -i http://127.0.0.1:5000/api/v1/notes/note_02 \
   -H "Cookie: umberdesk12_session=sess_bm_1"
 ```
 
-**3. Đối chiếu với 5 endpoint tương ứng 5 lỗi:**
+Ở chế độ mặc định (đã sửa), request trên trả về `404`. Đổi `VULNERABLE_MODE = True` và restart để thấy lại hành vi lỗi gốc (`200`, lộ dữ liệu).
 
-| Lỗi | Endpoint | Vấn đề |
+**3. Đối chiếu với 5 authorization boundary trong bài:**
+
+| Boundary | Endpoint | Vấn đề (khi `VULNERABLE_MODE = True`) |
 |---|---|---|
-| F-01 | `GET /api/v1/notes/{id}` | Kiểm tra membership, không kiểm tra ownership |
-| F-02 | `PATCH /api/v1/notes/{id}` | Mass assignment — `review_status` không được lọc |
-| F-03 | `GET /api/v1/manager/cases/{id}` | Kiểm tra role, không kiểm tra tenant |
-| F-04 | `GET /api/v1/orgs/{org}/cases/{case}/evidence/{id}` | Không kiểm tra quan hệ evidence↔case |
-| F-05 | `POST /api/v1/exports` | Worker không xác thực lại nguồn dữ liệu |
+| Ownership | `GET /api/v1/notes/{id}` | Kiểm tra membership, không kiểm tra ownership |
+| Property-level authorization | `PATCH /api/v1/notes/{id}` | Mass assignment — `review_status` không được lọc |
+| Tenant scope | `GET /api/v1/manager/cases/{id}` | Kiểm tra role, không kiểm tra tenant |
+| Parent-child relationship | `GET /api/v1/orgs/{org}/cases/{case}/evidence/{id}` | Không kiểm tra quan hệ evidence↔case |
+| Direct và indirect access path | `POST /api/v1/exports` | Worker không xác thực lại nguồn dữ liệu |
 
-**4. Xem bản đã sửa:** đổi `VULNERABLE_MODE = False` trong `app.py`, restart, chạy lại request ở bước 2 — sẽ ra kết quả khớp cột "After repair" trong bài viết.
-
-**5. Reset dữ liệu** không cần restart:
+**4. Reset dữ liệu** không cần restart:
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/_reset
 ```
