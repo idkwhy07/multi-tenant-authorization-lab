@@ -41,7 +41,7 @@ from itertools import count
 
 from flask import Flask, request, jsonify, make_response
 
-VULNERABLE_MODE = False  # flip to False to reproduce the corrected build
+VULNERABLE_MODE = True  # flip to False to reproduce the corrected build
 
 app = Flask(__name__)
 
@@ -58,12 +58,12 @@ class Role(StrEnum):
 
 USERS = {
     # user_id: (display_name, email, password, session_token)
-    "usr_01": ("Emma Carter", "emma.carter@meldran.test", "fixture-password", "sess_ec_1"),
-    "usr_02": ("Daniel Reed", "daniel.reed@meldran.test", "fixture-password", "sess_dr_1"),
-    "usr_03": ("Ben Miller", "ben.miller@meldran.test", "fixture-password", "sess_bm_1"),
-    "usr_04": ("Alex Turner", "alex.turner@meldran.test", "fixture-password", "sess_at_1"),
-    "usr_05": ("Maya Collins", "maya.collins@ternwick.test", "fixture-password", "sess_mc_1"),
-    "usr_06": ("Leo Foster", "leo.foster@ternwick.test", "fixture-password", "sess_lf_1"),
+    "usr_01": ("Emma Carter", "emma.carter@meldran.test", "Secret@123", "sess_ec_1"),
+    "usr_02": ("Daniel Reed", "daniel.reed@meldran.test", "Secret@123", "sess_dr_1"),
+    "usr_03": ("Ben Miller", "ben.miller@meldran.test", "Secret@123", "sess_bm_1"),
+    "usr_04": ("Alex Turner", "alex.turner@meldran.test", "Secret@123", "sess_at_1"),
+    "usr_05": ("Maya Collins", "maya.collins@ternwick.test", "Secret@123", "sess_mc_1"),
+    "usr_06": ("Leo Foster", "leo.foster@ternwick.test", "Secret@123", "sess_lf_1"),
 }
 
 
@@ -657,5 +657,5 @@ def reset_fixture():
 if __name__ == "__main__":
     mode = "VULNERABLE" if VULNERABLE_MODE else "FIXED"
     print(f"Umber Desk 12 fixture running in {mode} mode -- http://127.0.0.1:5000")
-    print("Login as e.g. ben.miller@meldran.test / fixture-password")
+    print("Login as e.g. ben.miller@meldran.test / Secret@123")
     app.run(host="127.0.0.1", port=5000, debug=False)
