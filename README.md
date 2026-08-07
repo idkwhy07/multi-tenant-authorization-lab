@@ -1,62 +1,69 @@
-# multi-tenant-authorization-lab
+# Umber Desk 12 — Authorization fixture server
 
-## Đây là gì?
+Server Flask nhỏ (~260 dòng) tái hiện 5 lỗi Authorization thường gặp trong SaaS multi-tenant: ownership, property-level authorization, tenant scope, parent-child relationship và indirect access path. Có một flag để chuyển giữa bản có lỗi và bản đã sửa, dùng để so sánh trực tiếp hành vi trước/sau khi fix.
 
-Một server Flask nhỏ, dữ liệu lưu trong RAM, tái hiện lại 5 lỗi vi phạm authorization boundary — và bản đã sửa của chúng — trong một ứng dụng SaaS multi-tenant hư cấu tên "Umber Desk 12". Được mô tả trong bài viết ["Kiểm thử Authorization trong SaaS multi-tenant: Case study 5 lỗ hổng"](LINK_BÀI_VIẾT_CỦA_BẠN).
+## 5 lỗi được tái hiện
 
-> Umber Desk 12 là ứng dụng hư cấu. Repo này không phải sản phẩm thật, chỉ tồn tại để phục vụ mục đích minh họa bên dưới.
+| Finding | Boundary | Endpoint |
+|---|---|---|
+| 01 | Ownership | `GET /api/v1/notes/<note_id>` |
+| 02 | Property-level authorization | `PATCH /api/v1/notes/<note_id>` |
+| 03 | Tenant scope | `GET /api/v1/manager/cases/<case_id>` |
+| 04 | Parent-child relationship | `GET /api/v1/orgs/<org_id>/cases/<case_id>/evidence/<evidence_id>` |
+| 05 | Indirect access path | `POST /api/v1/exports` → worker → `GET /api/v1/exports/<job_id>/download` |
 
-## Để làm gì?
-
-Bài viết mô tả các HTTP request/response minh họa cho từng lỗi, cả trước và sau khi sửa. Thay vì viết tay các ví dụ đó, repo này là một server thật — chạy lên là có thể tự tay gửi request bằng curl/Burp và nhận về đúng response như trong bài, thay vì phải tin vào ví dụ được viết sẵn.
-
-## Công nghệ
-
-- **Python 3.11+** và **Flask** — toàn bộ chỉ 1 file `app.py`
-- Không database — dữ liệu là dict Python trong RAM, mất khi restart server
-- Không JWT thật — session là cookie cố định, map sẵn tới 6 user dựng sẵn
-
-## Cài đặt
+## Cài đặt và chạy
 
 ```bash
-pip install flask
+pip install flask --break-system-packages
 python app.py
 ```
 
-Server chạy ở `http://127.0.0.1:5000`. **Mặc định chạy ở chế độ đã sửa** (`VULNERABLE_MODE = False` trong `app.py`).
+Server chạy tại `http://127.0.0.1:5000`. Terminal sẽ in ra mode hiện tại (`VULNERABLE` hoặc `FIXED`).
 
-Muốn xem lại phiên bản có lỗi gốc: mở `app.py`, đổi dòng đầu thành `VULNERABLE_MODE = True`, restart server.
+## Tài khoản test
 
-## Sử dụng
+Toàn bộ user dùng chung mật khẩu `Secret@123`.
 
-**1. Đăng nhập** để lấy session cookie (danh sách email/mật khẩu ở biến `USERS` đầu file):
+| User | Email | Role | Organization |
+|---|---|---|---|
+| Emma Carter | emma.carter@meldran.test | Owner | org_01 — Meldran Biomedical Works |
+| Daniel Reed | daniel.reed@meldran.test | Manager | org_01 — Meldran Biomedical Works |
+| Ben Miller | ben.miller@meldran.test | Analyst | org_01 — Meldran Biomedical Works |
+| Alex Turner | alex.turner@meldran.test | Analyst | org_01 — Meldran Biomedical Works |
+| Maya Collins | maya.collins@ternwick.test | Owner | org_02 — Ternwick Transit Cooperative |
+| Leo Foster | leo.foster@ternwick.test | Analyst | org_02 — Ternwick Transit Cooperative |
 
-```bash
-curl -X POST http://127.0.0.1:5000/api/v1/session \
-  -H "Content-Type: application/json" \
-  -d '{"email":"ben.miller@meldran.test","password":"fixture-password"}'
+Login qua `POST /api/v1/session` với `email` và `password`, server trả về session cookie dùng cho các request sau.
+
+## Chuyển giữa vulnerable và fixed build
+
+`VULNERABLE_MODE` là một hằng số ở đầu `app.py`:
+
+```python
+VULNERABLE_MODE = True   # tái hiện 5 lỗi
+VULNERABLE_MODE = False  # bản đã sửa
 ```
 
-**2. Gửi request kèm cookie** trả về ở bước 1:
+Đây là hằng số đọc lúc import module, nên sau khi đổi giá trị cần **restart server** (`python app.py`) để áp dụng — không thể chuyển khi server đang chạy.
 
-```bash
-curl -i http://127.0.0.1:5000/api/v1/notes/note_02 \
-  -H "Cookie: umberdesk12_session=sess_bm_1"
-```
+## Reset dữ liệu
 
-Ở chế độ mặc định (đã sửa), request trên trả về `404`. Đổi `VULNERABLE_MODE = True` và restart để thấy lại hành vi lỗi gốc (`200`, lộ dữ liệu).
+Server lưu dữ liệu trong memory. Restart sẽ tự seed lại từ đầu. Muốn reset mà không cần restart:
 
-**3. Đối chiếu với 5 authorization boundary trong bài:**
-
-| Boundary | Endpoint | Vấn đề (khi `VULNERABLE_MODE = True`) |
-|---|---|---|
-| Ownership | `GET /api/v1/notes/{id}` | Kiểm tra membership, không kiểm tra ownership |
-| Property-level authorization | `PATCH /api/v1/notes/{id}` | Mass assignment — `review_status` không được lọc |
-| Tenant scope | `GET /api/v1/manager/cases/{id}` | Kiểm tra role, không kiểm tra tenant |
-| Parent-child relationship | `GET /api/v1/orgs/{org}/cases/{case}/evidence/{id}` | Không kiểm tra quan hệ evidence↔case |
-| Direct và indirect access path | `POST /api/v1/exports` | Worker không xác thực lại nguồn dữ liệu |
-
-**4. Reset dữ liệu** không cần restart:
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/_reset
 ```
+
+## Giới hạn cố ý
+
+Vài chỗ được đơn giản hóa có chủ đích, không phải thiếu sót:
+
+- Lưu dữ liệu trong memory (dict), không dùng database thật.
+- Session là chuỗi cố định map sẵn với 6 user, không phải JWT/bearer token thật.
+- Export "worker" chạy đồng bộ ngay trong request thay vì qua queue — logic authorization giống hệt worker bất đồng bộ thật, chỉ đơn giản hóa phần transport.
+- Chỉ chạy HTTP/1.1.
+
+## Đọc thêm
+
+Phân tích đầy đủ về root cause và cách sửa từng lỗi: **[Kiểm thử Authorization trong SaaS multi-tenant: Case study 5 lỗ hổng](https://idkwhy07.github.io/posts/authorization-case-study/)**.

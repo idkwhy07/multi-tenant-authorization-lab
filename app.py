@@ -207,7 +207,7 @@ def me():
 
 
 # ---------------------------------------------------------------------------
-# Notes -- F-01 (ownership) and F-02 (mass assignment)
+# Notes -- 01 (ownership) and 02 (mass assignment)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/v1/notes/<note_id>", methods=["GET"])
@@ -223,7 +223,7 @@ def read_note(note_id):
         return problem(404, "Not Found")
 
     if VULNERABLE_MODE:
-        allowed = True  # F-01: membership checked, ownership is not
+        allowed = True  # 01: membership checked, ownership is not
     else:
         allowed = membership["role"] in (Role.MANAGER, Role.OWNER) or note["owner_id"] == user_id
 
@@ -259,7 +259,7 @@ def update_note(note_id):
     body = request.get_json(force=True, silent=True) or {}
 
     if VULNERABLE_MODE:
-        # F-02: entire body bound to the model, review_status not allowlisted
+        # 02: entire body bound to the model, review_status not allowlisted
         if "title" in body:
             note["title"] = body["title"]
         if "body" in body:
@@ -310,7 +310,7 @@ def review_queue_note(note_id):
 
 
 # ---------------------------------------------------------------------------
-# Cases -- F-03 (tenant scope) and batch read
+# Cases -- 03 (tenant scope) and batch read
 # ---------------------------------------------------------------------------
 
 @app.route("/api/v1/manager/cases/<case_id>", methods=["GET"])
@@ -328,7 +328,7 @@ def manager_read_case(case_id):
         return problem(403, "Forbidden")
 
     if VULNERABLE_MODE:
-        allowed = True  # F-03: role checked, tenant scope is not
+        allowed = True  # 03: role checked, tenant scope is not
     else:
         allowed = any(m["organization_id"] == case["organization_id"] for m in manager_memberships)
 
@@ -388,7 +388,7 @@ def update_case(case_id):
 
 
 # ---------------------------------------------------------------------------
-# Evidence -- F-04 (nested relationship) and the correctly-scoped direct route
+# Evidence -- 04 (nested relationship) and the correctly-scoped direct route
 # ---------------------------------------------------------------------------
 
 @app.route("/api/v1/orgs/<org_id>/cases/<case_id>/evidence/<evidence_id>", methods=["GET"])
@@ -410,7 +410,7 @@ def nested_evidence_read(org_id, case_id, evidence_id):
         return problem(404, "Not Found")
 
     if VULNERABLE_MODE:
-        allowed = evidence["organization_id"] == org_id  # F-04: case_id relationship not checked
+        allowed = evidence["organization_id"] == org_id  # 04: case_id relationship not checked
     else:
         allowed = evidence["organization_id"] == org_id and evidence["case_id"] == case_id
 
@@ -470,7 +470,7 @@ def direct_evidence_read(evidence_id):
 
 
 # ---------------------------------------------------------------------------
-# GraphQL -- always correctly scoped; used as the F-05 contrast, not a bug
+# GraphQL -- always correctly scoped; used as the 05 contrast, not a bug
 # ---------------------------------------------------------------------------
 
 @app.route("/api/v1/graphql", methods=["POST"])
@@ -489,7 +489,7 @@ def graphql():
 
 
 # ---------------------------------------------------------------------------
-# Exports -- F-05 (indirect path / worker re-authorization)
+# Exports -- 05 (indirect path / worker re-authorization)
 # ---------------------------------------------------------------------------
 
 @app.route("/api/v1/exports", methods=["POST"])
@@ -505,7 +505,7 @@ def create_export():
         return problem(404, "Not Found")
 
     if not VULNERABLE_MODE and not can_read_evidence(user_id, evidence):
-        # F-05 fixed: authorized before a job is ever queued -- no job created
+        # 05 fixed: authorized before a job is ever queued -- no job created
         return problem(403, "Forbidden")
 
     job_id = f"job_{next(DB['job_counter']):02d}"
