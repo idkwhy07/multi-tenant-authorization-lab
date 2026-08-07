@@ -1,6 +1,6 @@
 # Umber Desk 12 — Authorization fixture server
 
-Server Flask nhỏ (~260 dòng) tái hiện 5 lỗi Authorization thường gặp trong SaaS multi-tenant: ownership, property-level authorization, tenant scope, parent-child relationship và indirect access path. Có một flag để chuyển giữa bản có lỗi và bản đã sửa, dùng để so sánh trực tiếp hành vi trước/sau khi fix.
+Server Flask nhỏ tái hiện 5 lỗi Authorization thường gặp trong SaaS multi-tenant: ownership, property-level authorization, tenant scope, parent-child relationship và indirect access path. Có một flag để chuyển giữa bản có lỗi và bản đã sửa, dùng để so sánh trực tiếp hành vi trước/sau khi fix.
 
 ## 5 lỗi được tái hiện
 
